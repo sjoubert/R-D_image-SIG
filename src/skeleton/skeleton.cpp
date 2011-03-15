@@ -57,7 +57,7 @@ int main(int argc, char** argv)
                 colorSrcImg = cvCloneImage(tmp);
                 process(colorSrcImg);
                 cvReleaseImage(&colorSrcImg);
-                cvWaitKey(2);
+                cvWaitKey(100);
             }
             cvReleaseCapture(&capture);
             cvWaitKey();
@@ -97,7 +97,7 @@ void process(IplImage *colorSrcImg)
     /***** Threshold *****/
     cvThreshold(graySrcImg, graySrcImg, 240, 255, CV_THRESH_BINARY);
     cvMorphologyEx(graySrcImg, graySrcImg, NULL,
-                   cvCreateStructuringElementEx(5, 5, 1, 1, CV_SHAPE_RECT),
+                   cvCreateStructuringElementEx(5, 5, 2, 2, CV_SHAPE_RECT),
                    CV_MOP_CLOSE);
     cvShowImage("Binary", graySrcImg);
 
