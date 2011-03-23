@@ -15,7 +15,16 @@ enum InputType
     NONE
 };
 
+struct MouseParam
+{
+    bool clicked;
+    CvPoint point;
+};
+
+MouseParam param;
+
 void process(IplImage *colorSrcImg);
+void onMouse(int event, int x, int y, int flags, void* param);
 
 int main(int argc, char** argv)
 {
@@ -33,19 +42,26 @@ int main(int argc, char** argv)
         input = CAM;
     }
 
+    param.clicked = false;
+    param.point = cvPoint(-1, -1);
+
     if (input != NONE)
     {
         cvNamedWindow("Source", CV_WINDOW_AUTOSIZE);
         cvNamedWindow("Binary", CV_WINDOW_AUTOSIZE);
         cvNamedWindow("Skeleton", CV_WINDOW_AUTOSIZE);
         cvNamedWindow("Intersections", CV_WINDOW_AUTOSIZE);
-        
+
         IplImage *colorSrcImg = NULL;
         CvCapture *capture = NULL;
-        
+
         if (input == IMAGE && ((colorSrcImg = cvLoadImage(argv[2])) != NULL))
         {
-            process(colorSrcImg);   
+            cvShowImage("Source", colorSrcImg);
+            cvSetMouseCallback("Source", onMouse, &param);
+            while (!param.clicked) { cvWaitKey(100); }
+
+            process(colorSrcImg);
             cvReleaseImage(&colorSrcImg);
             cvWaitKey();
         }
@@ -78,7 +94,7 @@ int main(int argc, char** argv)
             cvReleaseCapture(&capture);
             cvWaitKey();
         }
-    
+
         cvDestroyWindow("Source");
         cvDestroyWindow("Binary");
         cvDestroyWindow("Skeleton");
@@ -89,13 +105,28 @@ int main(int argc, char** argv)
 void process(IplImage *colorSrcImg)
 {
     IplImage *graySrcImg = cvCreateImage(cvGetSize(colorSrcImg), IPL_DEPTH_8U, 1);
-    
+
     /***** Source *****/
     cvShowImage("Source", colorSrcImg);
     cvConvertImage(colorSrcImg, graySrcImg);
 
     /***** Threshold *****/
-    cvThreshold(graySrcImg, graySrcImg, 240, 255, CV_THRESH_BINARY);
+    if (param.point.x < 0 && param.point.x < 0)
+    {
+        cvThreshold(graySrcImg, graySrcImg, 240, 255, CV_THRESH_BINARY);
+    }
+    else
+    {
+        int color = cvGet2D(graySrcImg, param.point.y, param.point.x).val[0];
+        int min = color - 10;
+        if (min < 0) min = 0;
+        int max = color + 10;
+        if (max > 255) max = 255;
+
+        cvThreshold(graySrcImg, graySrcImg, min, 255, CV_THRESH_TOZERO);
+        cvThreshold(graySrcImg, graySrcImg, max, 255, CV_THRESH_TOZERO_INV);
+        cvThreshold(graySrcImg, graySrcImg, 0, 255, CV_THRESH_BINARY);
+    }
     cvMorphologyEx(graySrcImg, graySrcImg, NULL,
                    cvCreateStructuringElementEx(5, 5, 2, 2, CV_SHAPE_RECT),
                    CV_MOP_CLOSE);
@@ -115,4 +146,14 @@ void process(IplImage *colorSrcImg)
     cvShowImage("Intersections", colorSrcImg);
 
     cvReleaseImage(&graySrcImg);
+}
+
+void onMouse(int event, int x, int y, int, void* param)
+{
+    if (event == CV_EVENT_LBUTTONUP)
+    {
+        MouseParam *mouseParam = reinterpret_cast<MouseParam*>(param);
+        mouseParam->clicked = true;
+        mouseParam->point = cvPoint(x, y);
+    }
 }
